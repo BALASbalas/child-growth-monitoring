@@ -17,10 +17,17 @@ class ImmunizationController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Immunization::with(['child', 'immunizationSchedule'])
-            ->whereHas('child', function($q) {
-                $q->where('user_id', Auth::id());
+        $user = Auth::user();
+        
+        $query = Immunization::with(['child', 'immunizationSchedule']);
+
+        // Healthcare workers (admin, nurse, doctor) see ALL children's immunizations
+        // Parents/guardians see only their own children's
+        if (!($user->isAdmin() || $user->isNurse() || $user->isDoctor())) {
+            $query->whereHas('child', function($q) use ($user) {
+                $q->where('user_id', $user->id);
             });
+        }
 
         if ($request->has('status')) {
             $query->where('status', $request->status);
@@ -93,14 +100,25 @@ class ImmunizationController extends Controller
      */
     public function create(Request $request)
     {
+        $user = Auth::user();
         $child = null;
+        
         if ($request->has('child_id')) {
-            $child = Child::where('id', $request->child_id)
-                ->where('user_id', Auth::id())
-                ->first();
+            $childQuery = Child::where('id', $request->child_id);
+            // Healthcare workers can select any child, parents only their own
+            if (!($user->isAdmin() || $user->isNurse() || $user->isDoctor())) {
+                $childQuery->where('user_id', $user->id);
+            }
+            $child = $childQuery->first();
         }
 
-        $children = Child::where('user_id', Auth::id())->active()->get();
+        // Healthcare workers see ALL children, parents see only theirs
+        if ($user->isAdmin() || $user->isNurse() || $user->isDoctor()) {
+            $children = Child::active()->get();
+        } else {
+            $children = Child::where('user_id', $user->id)->active()->get();
+        }
+        
         $schedules = ImmunizationSchedule::active()->ordered()->get();
 
         return view('immunizations.create', compact('children', 'child', 'schedules'));
@@ -170,9 +188,14 @@ class ImmunizationController extends Controller
      */
     public function show(Immunization $immunization)
     {
-        // Check authorization
-        if ($immunization->child->user_id !== Auth::id()) {
-            abort(403);
+        $user = Auth::user();
+        
+        // Healthcare workers (admin, nurse, doctor) can see any immunization
+        // Parents/guardians can only see their own children's
+        if (!($user->isAdmin() || $user->isNurse() || $user->isDoctor())) {
+            if ($immunization->child->user_id !== $user->id) {
+                abort(403);
+            }
         }
 
         return view('immunizations.show', compact('immunization'));
@@ -183,12 +206,23 @@ class ImmunizationController extends Controller
      */
     public function edit(Immunization $immunization)
     {
-        // Check authorization
-        if ($immunization->child->user_id !== Auth::id()) {
-            abort(403);
+        $user = Auth::user();
+        
+        // Healthcare workers can edit any immunization
+        // Parents/guardians can only edit their own children's
+        if (!($user->isAdmin() || $user->isNurse() || $user->isDoctor())) {
+            if ($immunization->child->user_id !== $user->id) {
+                abort(403);
+            }
         }
 
-        $children = Child::where('user_id', Auth::id())->active()->get();
+        // Healthcare workers see ALL children, parents see only theirs
+        if ($user->isAdmin() || $user->isNurse() || $user->isDoctor()) {
+            $children = Child::active()->get();
+        } else {
+            $children = Child::where('user_id', $user->id)->active()->get();
+        }
+        
         $schedules = ImmunizationSchedule::active()->ordered()->get();
 
         return view('immunizations.edit', compact('immunization', 'children', 'schedules'));
@@ -199,9 +233,14 @@ class ImmunizationController extends Controller
      */
     public function update(Request $request, Immunization $immunization)
     {
-        // Check authorization
-        if ($immunization->child->user_id !== Auth::id()) {
-            abort(403);
+        $user = Auth::user();
+        
+        // Healthcare workers can update any immunization
+        // Parents/guardians can only update their own children's
+        if (!($user->isAdmin() || $user->isNurse() || $user->isDoctor())) {
+            if ($immunization->child->user_id !== $user->id) {
+                abort(403);
+            }
         }
 
         $validated = $request->validate([
@@ -231,9 +270,14 @@ class ImmunizationController extends Controller
      */
     public function administer(Immunization $immunization, Request $request)
     {
-        // Check authorization
-        if ($immunization->child->user_id !== Auth::id()) {
-            abort(403);
+        $user = Auth::user();
+        
+        // Healthcare workers can administer any immunization
+        // Parents/guardians can only administer their own children's
+        if (!($user->isAdmin() || $user->isNurse() || $user->isDoctor())) {
+            if ($immunization->child->user_id !== $user->id) {
+                abort(403);
+            }
         }
 
         $validated = $request->validate([
@@ -266,9 +310,14 @@ class ImmunizationController extends Controller
      */
     public function generateSchedule(Child $child, Request $request)
     {
-        // Check authorization
-        if ($child->user_id !== Auth::id()) {
-            abort(403);
+        $user = Auth::user();
+        
+        // Healthcare workers can generate schedule for any child
+        // Parents/guardians can only generate for their own children
+        if (!($user->isAdmin() || $user->isNurse() || $user->isDoctor())) {
+            if ($child->user_id !== $user->id) {
+                abort(403);
+            }
         }
 
         $dob = Carbon::parse($child->date_of_birth);
@@ -330,9 +379,14 @@ class ImmunizationController extends Controller
      */
     public function destroy(Immunization $immunization)
     {
-        // Check authorization
-        if ($immunization->child->user_id !== Auth::id()) {
-            abort(403);
+        $user = Auth::user();
+        
+        // Healthcare workers can delete any immunization
+        // Parents/guardians can only delete their own children's
+        if (!($user->isAdmin() || $user->isNurse() || $user->isDoctor())) {
+            if ($immunization->child->user_id !== $user->id) {
+                abort(403);
+            }
         }
 
         $child = $immunization->child;
