@@ -155,6 +155,7 @@
                     <div class="form-group sm:col-span-2">
                         <label class="form-label">Clinical Notes</label>
                         <textarea x-model="form.clinical_notes" class="form-input" rows="2" placeholder="Clinical notes"></textarea>
+                        <p class="form-error" x-show="errors.measurement" x-text="errors.measurement"></p>
                     </div>
                 </div>
             </div>
@@ -338,6 +339,16 @@
                 this.saving = true; this.errors = {};
                 if (!this.form.child_id) { this.errors.child_id = 'Required'; this.saving = false; return; }
                 if (!this.form.measurement_date) { this.errors.measurement_date = 'Required'; this.saving = false; return; }
+
+                const hasMeasurementValue = ['weight', 'height', 'head_circumference', 'mid_upper_arm_circumference', 'temperature']
+                    .some(field => this.form[field] !== '' && this.form[field] !== null && this.form[field] !== undefined);
+
+                if (!hasMeasurementValue) {
+                    this.errors.measurement = 'Please provide at least one measurement value.';
+                    this.saving = false;
+                    return;
+                }
+
                 try {
                     const url = this.isEditing ? `/api/growth-measurements/${this.editingId}` : '/api/growth-measurements';
                     const method = this.isEditing ? 'PUT' : 'POST';
@@ -346,7 +357,7 @@
                         body: JSON.stringify(this.form)
                     });
                     const d = await r.json();
-                    if (!r.ok) { if (d.errors) Object.keys(d.errors).forEach(k => this.errors[k] = d.errors[k][0]); else if (d.message) showToast(d.message, 'error'); this.saving = false; return; }
+                    if (!r.ok) { if (d.errors) Object.keys(d.errors).forEach(k => this.errors[k] = d.errors[k][0]); else if (d.message) { this.errors.measurement = d.message; showToast(d.message, 'error'); } this.saving = false; return; }
                     showToast(d.message, 'success'); this.closeModal(); this.loadMeasurements();
                 } catch(e) { showToast('An error occurred', 'error'); }
                 this.saving = false;

@@ -1,0 +1,78 @@
+================================================================================
+MAHALI CODE ZA KUUNGANISHA VIFAA (DIGITAL SCALE DEVICES) ZILIPO
+================================================================================
+
+1. MODEL (Database & Logic)
+------------------------------------------------------
+📁 /app/Models/DeviceConnection.php
+   → Hapa ndio model inayoshughulikia:
+     - Serial port configuration (COM, baud rate, data bits, parity, stop bits)
+     - Calibration (offset + factor)
+     - Data parsing patterns za digital scales
+     - applyCalibration(), parseDeviceData()
+
+2. CONTROLLER (API na Logic)
+------------------------------------------------------
+📁 /app/Http/Controllers/DeviceController.php
+   → Hapa ndio controller inayoshughulikia:
+     - store() - kusajili kifaa kipya
+     - connect()/disconnect() - kuunganisha/kata muunganisho
+     - calibrate() - calibration
+     - receiveData() - API kupokea data kutoka kwenye kifaa
+     - apiIndex() - kurusha devices kwa AJAX
+
+3. VIEW (User Interface)
+------------------------------------------------------
+📁 /resources/views/devices/index.blade.php
+   → Hapa ndio UI inayoonekana kwa mtumiaji:
+     - Connect device section (COM port, baud rate settings)
+     - Calibration modal (offset & factor)
+     - Device list, stats, actions
+
+4. ROUTES (Web URLs)
+------------------------------------------------------
+📁 /routes/web.php
+   → Hapa ndio routes za devices (tafuta "Device" au "device"):
+     GET  /devices              → index (orodha)
+     GET  /devices/create       → create form
+     POST /devices              → store (sajili)
+     POST /devices/{id}/connect → connect (unganisha)
+     POST /devices/{id}/calibrate → calibrate (rekebisha)
+     DELETE /devices/{id}       → destroy (futa)
+
+5. SEED SCRIPT (Example Device)
+------------------------------------------------------
+📁 /scripts/seed_device.php
+   → Script ya kuongeza device example kwenye database
+
+6. API CONTROLLERS
+------------------------------------------------------
+📁 /app/Http/Controllers/Api/GrowthMeasurementApiController.php
+   → API za kupokea data za growth measurements kutoka vifaa
+
+📁 /app/Http/Controllers/Api/ChildApiController.php
+   → API za kupata child data
+
+7. GROWTH MEASUREMENT MODEL (hifadhi data kutoka kwenye kifaa)
+------------------------------------------------------
+📁 /app/Models/GrowthMeasurement.php
+   → Model inayohifadhi measurements zilizotumwa na vifaa
+     (ina field: device_id, is_from_device)
+
+8. DATABASE MIGRATION (Tables)
+------------------------------------------------------
+📁 /database/migrations/
+   → Tafuta file lenye "device_connections" kwenye jina lake
+     (huu ndio ubao unaohifadhi taarifa za vifaa vilivyosajiliwa)
+
+================================================================================
+JINSI YA KUFUNGA KIFAA CHA DIGITAL SCALE
+================================================================================
+1. Nenda kwenye browser → /devices
+2. Bofya "Add Device" → jaza taarifa za kifaa chako
+3. Bofya "Connect" → weka COM port (mfano COM3) na baud rate (mfano 9600)
+4. Bofya "Calibrate" → weka offset na factor ikibidi
+5. Kifaa kinapotuma data (mfano "12.345 kg"), system inachambua,
+   kurekebisha kwa calibration, na kuunda GrowthMeasurement moja kwa moja
+
+================================================================================

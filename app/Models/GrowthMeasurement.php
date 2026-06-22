@@ -43,7 +43,7 @@ class GrowthMeasurement extends Model
         'weight_for_height_zscore' => 'decimal:2',
         'bmi' => 'decimal:2',
         'bmi_for_age_zscore' => 'decimal:2',
-        'measurement_date' => 'datetime',
+        'measurement_date' => 'date:Y-m-d',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

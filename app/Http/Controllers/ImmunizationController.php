@@ -44,14 +44,22 @@ class ImmunizationController extends Controller
      */
     public function upcoming()
     {
-        $immunizations = Immunization::with(['child', 'immunizationSchedule'])
-            ->whereHas('child', function($q) {
-                $q->where('user_id', Auth::id());
-            })
+        $user = Auth::user();
+        
+        $query = Immunization::with(['child', 'immunizationSchedule'])
             ->scheduled()
             ->upcoming()
-            ->orderBy('next_due_date')
-            ->get();
+            ->orderBy('next_due_date');
+
+        // Healthcare workers (admin, nurse, doctor) see ALL children's upcoming vaccinations
+        // Parents/guardians see only their own children's
+        if (!($user->isAdmin() || $user->isNurse() || $user->isDoctor())) {
+            $query->whereHas('child', function($q) use ($user) {
+                $q->where('user_id', $user->id);
+            });
+        }
+
+        $immunizations = $query->get();
 
         return view('immunizations.upcoming', compact('immunizations'));
     }
@@ -61,13 +69,21 @@ class ImmunizationController extends Controller
      */
     public function overdue()
     {
-        $immunizations = Immunization::with(['child', 'immunizationSchedule'])
-            ->whereHas('child', function($q) {
-                $q->where('user_id', Auth::id());
-            })
+        $user = Auth::user();
+        
+        $query = Immunization::with(['child', 'immunizationSchedule'])
             ->overdue()
-            ->orderBy('next_due_date')
-            ->get();
+            ->orderBy('next_due_date');
+
+        // Healthcare workers (admin, nurse, doctor) see ALL children's overdue vaccinations
+        // Parents/guardians see only their own children's
+        if (!($user->isAdmin() || $user->isNurse() || $user->isDoctor())) {
+            $query->whereHas('child', function($q) use ($user) {
+                $q->where('user_id', $user->id);
+            });
+        }
+
+        $immunizations = $query->get();
 
         return view('immunizations.overdue', compact('immunizations'));
     }
@@ -128,6 +144,11 @@ class ImmunizationController extends Controller
 
         $validated['vaccine_name'] = $vaccineName;
         $validated['vaccine_type'] = $vaccineType;
+
+        // If status is administered but date_administered is null, default to today
+        if ($validated['status'] === 'administered' && empty($validated['date_administered'])) {
+            $validated['date_administered'] = now()->format('Y-m-d');
+        }
 
         // Check authorization - healthcare workers can record for any child (cross-role)
         $childQuery = Child::where('id', $validated['child_id']);

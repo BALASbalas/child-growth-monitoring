@@ -105,13 +105,8 @@ class ChildController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->isAdmin() || $user->isNurse() || $user->isDoctor()) {
-            // allowed
-        } else {
-            if ($child->user_id !== $user->id) {
-                abort(403);
-            }
-        }
+        // Allow all authenticated users to view any child's profile (read-only)
+        // Parents can search and view any child's growth progress
 
         $measurements = $child->growthMeasurements()->orderBy('measurement_date')->get();
 
@@ -125,7 +120,14 @@ class ChildController extends Controller
 
         $latestMeasurement = $latest;
 
-        return view('children.show', compact('child', 'measurements', 'zScores', 'alerts', 'latestMeasurement'));
+        // Auto-generate growth chart data from available measurements
+        $chartData = null;
+        $hasMeasurementData = $measurements->count() > 0;
+        if ($hasMeasurementData) {
+            $chartData = $this->whoGrowthService->getGrowthChartData($child, 'weight');
+        }
+
+        return view('children.show', compact('child', 'measurements', 'zScores', 'alerts', 'latestMeasurement', 'chartData', 'hasMeasurementData'));
     }
     /**
      * Show the form for editing the specified resource.
@@ -232,17 +234,7 @@ class ChildController extends Controller
      */
     public function growthChart(Child $child, Request $request)
     {
-        $user = Auth::user();
-        
-        // Admin, nurse, doctor can view any child's chart (cross-role)
-        if ($user->isAdmin() || $user->isNurse() || $user->isDoctor()) {
-            // Allow access
-        } else {
-            // Parents/guardians only their own children
-            if ($child->user_id !== $user->id) {
-                abort(403);
-            }
-        }
+        // Allow all authenticated users (including parents) to view any child's growth chart
 
         $parameter = $request->get('parameter', 'weight');
         $chartData = $this->whoGrowthService->getGrowthChartData($child, $parameter);
@@ -258,17 +250,7 @@ class ChildController extends Controller
      */
     public function immunizations(Child $child)
     {
-        $user = Auth::user();
-        
-        // Admin, nurse, doctor can view any child's immunizations (cross-role)
-        if ($user->isAdmin() || $user->isNurse() || $user->isDoctor()) {
-            // Allow access
-        } else {
-            // Parents/guardians only their own children
-            if ($child->user_id !== $user->id) {
-                abort(403);
-            }
-        }
+        // Allow all authenticated users (including parents) to view any child's immunizations
 
         $child->load(['immunizations', 'immunizations.immunizationSchedule']);
         $upcoming = $child->immunizations()->scheduled()->upcoming()->get();

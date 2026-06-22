@@ -29,9 +29,9 @@ Record Growth Measurement
                     <input type="date" name="measurement_date" value="{{ old('measurement_date', date('Y-m-d')) }}" required class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Weight (kg)</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Weight (kg) <span class="text-xs text-gray-400">(auto-filled from scale)</span></label>
                     <div class="flex space-x-2">
-                        <input type="number" step="0.01" name="weight" id="weightInput" value="{{ old('weight') }}" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="e.g. 12.5">
+                        <input type="number" step="0.01" name="weight" id="weightInput" value="{{ old('weight') }}" readonly class="flex-1 rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 cursor-not-allowed" placeholder="Connect scale to auto-fill">
                         <button type="button" id="connectScaleBtn" class="px-3 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 whitespace-nowrap flex items-center">
                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                             Scale

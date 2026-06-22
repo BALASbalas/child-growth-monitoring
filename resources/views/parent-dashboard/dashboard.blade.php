@@ -50,8 +50,8 @@ Parent Dashboard
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6" x-data="parentChildSearch()">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
             <div>
-                <h3 class="font-semibold text-gray-900 text-lg">Find Your Child's Progress</h3>
-                <p class="text-sm text-gray-500">Type your child's name to view growth, immunizations and health records</p>
+                <h3 class="font-semibold text-gray-900 text-lg">Your Children's Progress</h3>
+                <p class="text-sm text-gray-500">Type your child's name to filter, or view all children below</p>
             </div>
         </div>
         <div class="relative">
@@ -61,69 +61,69 @@ Parent Dashboard
             <input type="text" x-model="searchQuery" @input.debounce.200ms="searchChildren()" 
                    class="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none text-base transition-all"
                    placeholder="Type your child's name here..." style="font-size:1rem;">
+            <div x-show="searchQuery.length === 0" class="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-gray-400">
+                Showing all children
+            </div>
         </div>
-        <div class="mt-4" x-show="searched" x-cloak>
-            <template x-if="results.length === 0">
+        <div class="mt-4">
+            <template x-if="filteredChildren.length === 0">
                 <div class="text-center py-8 text-gray-400">
                     <svg class="mx-auto h-12 w-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    <p class="text-sm">No child found with that name.</p>
-                    <p class="text-xs text-gray-400 mt-1">Try typing a different name or contact your healthcare provider.</p>
+                    <p class="text-sm" x-text="searchQuery ? 'No child found with that name.' : 'No children registered yet.'"></p>
+                    <p class="text-xs text-gray-400 mt-1" x-text="searchQuery ? 'Try typing a different name or contact your healthcare provider.' : 'Contact your healthcare provider to register your child.'"></p>
                 </div>
             </template>
-            <template x-for="child in results" :key="child.id">
+            <template x-for="child in filteredChildren" :key="child.id">
                 <a :href="'/children/' + child.id" class="block bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-5 mb-3 hover:shadow-md transition-all hover:border-blue-200">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-4">
-                            <div class="w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-xl"
+                            <div class="w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-xl flex-shrink-0"
                                  :style="'background:' + (child.sex === 'male' ? '#2563EB' : '#EC4899')">
                                 <span x-text="child.full_name?.charAt(0) || 'C'"></span>
                             </div>
-                            <div>
-                                <h4 class="text-lg font-bold text-gray-900" x-text="child.full_name"></h4>
-                                <div class="flex items-center gap-3 text-sm text-gray-500 mt-1">
+                            <div class="min-w-0">
+                                <h4 class="text-lg font-bold text-gray-900 truncate" x-text="child.full_name"></h4>
+                                <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500 mt-1">
                                     <span class="inline-flex items-center gap-1">
                                         <span class="w-2 h-2 rounded-full" :class="child.sex === 'male' ? 'bg-blue-500' : 'bg-pink-500'"></span>
                                         <span x-text="child.sex === 'male' ? 'Male' : 'Female'"></span>
                                     </span>
-                                    <span>|</span>
                                     <span x-text="child.age_string"></span>
-                                    <span>|</span>
                                     <span x-text="child.unique_id"></span>
+                                </div>
+                                <!-- Growth Z-Score Indicator -->
+                                <div class="flex items-center gap-2 mt-1">
+                                    <template x-if="child.latest_waz !== null">
+                                        <span class="inline-flex items-center text-xs px-2 py-0.5 rounded-full"
+                                              :class="child.waz_status === 'critical' ? 'bg-red-100 text-red-700' : child.waz_status === 'warning' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'">
+                                            WAZ: <span x-text="child.latest_waz?.toFixed(2)"></span>
+                                        </span>
+                                    </template>
+                                    <template x-if="child.latest_haz !== null">
+                                        <span class="inline-flex items-center text-xs px-2 py-0.5 rounded-full"
+                                              :class="child.haz_status === 'critical' ? 'bg-red-100 text-red-700' : child.haz_status === 'warning' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'">
+                                            HAZ: <span x-text="child.latest_haz?.toFixed(2)"></span>
+                                        </span>
+                                    </template>
+                                    <template x-if="child.measurement_count > 0">
+                                        <span class="text-xs text-gray-400" x-text="child.measurement_count + ' measurements'"></span>
+                                    </template>
                                 </div>
                             </div>
                         </div>
-                        <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-3 flex-shrink-0">
                             <div class="text-right hidden sm:block">
                                 <p class="text-xs text-gray-400">Vaccines</p>
-                                <p class="font-bold" :class="child.vaccine_progress?.split('/')[0] === child.vaccine_progress?.split('/')[1] && parseInt(child.vaccine_progress?.split('/')[1]) > 0 ? 'text-green-600' : 'text-amber-600'" x-text="child.vaccine_progress || '0/0'"></p>
+                                <p class="font-bold text-sm" :class="child.vaccine_done === child.vaccine_total && child.vaccine_total > 0 ? 'text-green-600' : 'text-amber-600'" x-text="child.vaccine_progress || '0/0'"></p>
                             </div>
                             <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                         </div>
                     </div>
-                    <!-- Mini progress bars -->
-                    <div class="mt-3 grid grid-cols-3 gap-2">
-                        <div class="bg-white/70 rounded-lg p-2 text-center">
-                            <p class="text-xs text-gray-400">Nutrition</p>
-                            <p class="text-sm font-semibold" :class="child.nutrition_color === 'green' ? 'text-green-600' : child.nutrition_color === 'orange' ? 'text-orange-600' : 'text-red-600'" x-text="child.nutrition_label || 'N/A'"></p>
-                        </div>
-                        <div class="bg-white/70 rounded-lg p-2 text-center">
-                            <p class="text-xs text-gray-400">Weight</p>
-                            <p class="text-sm font-semibold text-gray-700" x-text="child.latest_weight ? child.latest_weight + ' kg' : 'N/A'"></p>
-                        </div>
-                        <div class="bg-white/70 rounded-lg p-2 text-center">
-                            <p class="text-xs text-gray-400">Height</p>
-                            <p class="text-sm font-semibold text-gray-700" x-text="child.latest_height ? child.latest_height + ' cm' : 'N/A'"></p>
-                        </div>
-                    </div>
-                </a>
-            </template>
-        </div>
-    </div>
-
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <a href="{{ route('children.index') }}" class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow flex items-center space-x-4">
-            <div class="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center"><svg class="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div>
-            <div><h4 class="font-semibold text-gray-900">All My Children</h4><p class="text-sm text-gray-500">View your children's growth progress</p></div>
+                    <!-- Growth Progress Bar -->
+                    <div class="mt-3">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-xs text-gray-500">Growth Progress</span>
+                            <span class="text-xs font-medium" :class="child.growth_progress >= 80 ? 'text-green-600' : child.growth_progress >= 50 ? 'text-amber-600' : 'text-red-600'"
         </a>
         <a href="{{ route('reports.growth') }}" class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-shadow flex items-center space-x-4">
             <div class="w-14 h-14 bg-cyan-100 rounded-xl flex items-center justify-center"><svg class="w-7 h-7 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg></div>

@@ -11,6 +11,17 @@ use Illuminate\Support\Facades\Auth;
 
 class GrowthMeasurementApiController extends Controller
 {
+    private function hasAnyMeasurementValue(array $validated): bool
+    {
+        foreach (['weight', 'height', 'head_circumference', 'mid_upper_arm_circumference', 'temperature'] as $field) {
+            if (array_key_exists($field, $validated) && $validated[$field] !== null && $validated[$field] !== '') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /**
      * Get growth measurements list for DataTable
      */
@@ -81,9 +92,15 @@ class GrowthMeasurementApiController extends Controller
             'height' => 'nullable|numeric|min:10|max:200',
             'head_circumference' => 'nullable|numeric|min:20|max:60',
             'mid_upper_arm_circumference' => 'nullable|numeric|min:5|max:40',
-            'temperature' => 'nullable|numeric|min:32|max:43',
+            'temperature' => 'nullable|numeric|max:43',
             'clinical_notes' => 'nullable|string',
         ]);
+
+        if (!$this->hasAnyMeasurementValue($validated)) {
+            return response()->json([
+                'message' => 'Please provide at least one measurement value (weight, height, head circumference, MUAC, or temperature).'
+            ], 422);
+        }
 
         $validated['user_id'] = Auth::id();
 
@@ -124,9 +141,15 @@ class GrowthMeasurementApiController extends Controller
             'height' => 'nullable|numeric|min:10|max:200',
             'head_circumference' => 'nullable|numeric|min:20|max:60',
             'mid_upper_arm_circumference' => 'nullable|numeric|min:5|max:40',
-            'temperature' => 'nullable|numeric|min:32|max:43',
+            'temperature' => 'nullable|numeric|max:43',
             'clinical_notes' => 'nullable|string',
         ]);
+
+        if (!$this->hasAnyMeasurementValue($validated)) {
+            return response()->json([
+                'message' => 'Please provide at least one measurement value (weight, height, head circumference, MUAC, or temperature).'
+            ], 422);
+        }
 
         // Recalculate BMI if weight or height changed
         if ((!empty($validated['weight']) || !empty($validated['height'])) && !empty($growthMeasurement->child)) {

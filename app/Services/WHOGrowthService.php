@@ -31,9 +31,18 @@ class WHOGrowthService
      */
     public function getWHOStandard(string $sex, int $ageInMonths): ?WHOGrowthStandard
     {
-        return WHOGrowthStandard::where('sex', $sex)
+        $standard = WHOGrowthStandard::where('sex', $sex)
             ->where('age_in_months', $ageInMonths)
             ->first();
+
+        // If no exact match, find the closest available age
+        if (!$standard) {
+            $standard = WHOGrowthStandard::where('sex', $sex)
+                ->orderByRaw('ABS(age_in_months - ' . intval($ageInMonths) . ')')
+                ->first();
+        }
+
+        return $standard;
     }
 
     /**
@@ -45,9 +54,11 @@ class WHOGrowthService
         $standard = $this->getWHOStandard($child->sex, $ageInMonths);
         
         if (!$standard) {
+            // Allow saving measurement even without WHO standards for Z-score calculation
             return [
-                'success' => false,
-                'message' => 'No WHO standard found for age ' . $ageInMonths . ' months',
+                'success' => true,
+                'message' => 'Measurement saved (no WHO growth standard available for age ' . $ageInMonths . ' months)',
+                'z_scores_calculated' => false,
             ];
         }
 
@@ -59,17 +70,21 @@ class WHOGrowthService
         // Calculate weight-for-age Z-score
         if ($measurement->weight) {
             $waz = $standard->calculateWeightForAgeZScore($measurement->weight);
-            $zScores['weight_for_age_zscore'] = $waz;
-            $zScores['weight_interpretation'] = WHOGrowthStandard::interpretWeightForAgeZScore($waz);
-            $measurement->weight_for_age_zscore = $waz;
+            if ($waz !== null) {
+                $zScores['weight_for_age_zscore'] = $waz;
+                $zScores['weight_interpretation'] = WHOGrowthStandard::interpretWeightForAgeZScore($waz);
+                $measurement->weight_for_age_zscore = $waz;
+            }
         }
 
         // Calculate height-for-age Z-score
         if ($measurement->height) {
             $haz = $standard->calculateHeightForAgeZScore($measurement->height);
-            $zScores['height_for_age_zscore'] = $haz;
-            $zScores['height_interpretation'] = WHOGrowthStandard::interpretHeightForAgeZScore($haz);
-            $measurement->height_for_age_zscore = $haz;
+            if ($haz !== null) {
+                $zScores['height_for_age_zscore'] = $haz;
+                $zScores['height_interpretation'] = WHOGrowthStandard::interpretHeightForAgeZScore($haz);
+                $measurement->height_for_age_zscore = $haz;
+            }
         }
 
         // Calculate BMI if weight and height are available
@@ -79,16 +94,20 @@ class WHOGrowthService
             $measurement->bmi = round($bmi, 2);
             
             $bmiZ = $standard->calculateBmiForAgeZScore($bmi);
-            $zScores['bmi_for_age_zscore'] = $bmiZ;
-            $measurement->bmi_for_age_zscore = $bmiZ;
+            if ($bmiZ !== null) {
+                $zScores['bmi_for_age_zscore'] = $bmiZ;
+                $measurement->bmi_for_age_zscore = $bmiZ;
+            }
         }
 
         // Calculate weight-for-height Z-score
         if ($measurement->weight && $measurement->height) {
             $whz = $standard->calculateWeightForHeightZScore($measurement->weight, $measurement->height);
-            $zScores['weight_for_height_zscore'] = $whz;
-            $zScores['wasting_interpretation'] = WHOGrowthStandard::interpretWeightForHeightZScore($whz);
-            $measurement->weight_for_height_zscore = $whz;
+            if ($whz !== null) {
+                $zScores['weight_for_height_zscore'] = $whz;
+                $zScores['wasting_interpretation'] = WHOGrowthStandard::interpretWeightForHeightZScore($whz);
+                $measurement->weight_for_height_zscore = $whz;
+            }
         }
 
         // Set nutritional status based on Z-scores
@@ -100,8 +119,18 @@ class WHOGrowthService
             $measurement->stunting_status = $zScores['height_interpretation']['status'];
         }
 
+        // Map interpretation status to database ENUM-compatible values
         if (isset($zScores['wasting_interpretation'])) {
-            $measurement->wasting_status = $zScores['wasting_interpretation']['status'];
+            $wastingStatus = $zScores['wasting_interpretation']['status'];
+            // Map to ENUM values: severe, moderate, normal
+            $wastingEnumMap = [
+                'severe_wasting' => 'severe',
+                'moderate_wasting' => 'moderate',
+                'normal' => 'normal',
+                'overweight' => 'normal',
+                'obese' => 'normal',
+            ];
+            $measurement->wasting_status = $wastingEnumMap[$wastingStatus] ?? 'normal';
         }
 
         $zScores['success'] = true;

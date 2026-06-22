@@ -26,6 +26,14 @@
                         Print Report
                     </a>
                 @endif
+                <a href="{{ route('children.growth-chart', $child) }}" class="inline-flex items-center px-3 py-2 bg-purple-50 text-purple-700 text-sm rounded-md hover:bg-purple-100">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
+                    Growth Chart
+                </a>
+                <a href="{{ route('children.immunizations', $child) }}" class="inline-flex items-center px-3 py-2 bg-amber-50 text-amber-700 text-sm rounded-md hover:bg-amber-100">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    Immunizations
+                </a>
                 <a href="{{ route('children.index') }}" class="inline-flex items-center px-3 py-2 bg-gray-100 text-gray-600 text-sm rounded-md hover:bg-gray-200">
                     Back
                 </a>
@@ -150,6 +158,65 @@
                             @endif
                         </div>
                     </div>
+
+                    <!-- Auto-Generated Growth Chart -->
+                    @if($hasMeasurementData && isset($chartData) && !empty($chartData['measurements']))
+                    <div class="page-card rounded-3xl overflow-hidden">
+                        <div class="px-6 py-4 bg-slate-900/80 border-b border-slate-700 flex justify-between items-center">
+                            <h3 class="font-semibold text-slate-100">📈 Growth Chart (Auto-Generated)</h3>
+                            <a href="{{ route('children.growth-chart', $child) }}" class="text-sm text-indigo-400 hover:text-indigo-300">View Full Chart →</a>
+                        </div>
+                        <div class="p-6">
+                            <canvas id="autoGrowthChart" height="200"></canvas>
+                            <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+                            <script>
+                                document.addEventListener('DOMContentLoaded', function() {
+                                    const ctx = document.getElementById('autoGrowthChart').getContext('2d');
+                                    new Chart(ctx, {
+                                        type: 'line',
+                                        data: {
+                                            labels: {!! json_encode(array_map(function($m) { return $m['age_months'] . 'm'; }, $chartData['measurements'])) !!},
+                                            datasets: [
+                                                {
+                                                    label: 'Weight (kg)',
+                                                    data: {!! json_encode(array_map(function($m) { return $m['value']; }, $chartData['measurements'])) !!},
+                                                    borderColor: '#3b82f6',
+                                                    backgroundColor: 'rgba(59,130,246,0.1)',
+                                                    fill: true,
+                                                    tension: 0.4,
+                                                    pointRadius: 5,
+                                                    pointBackgroundColor: '#3b82f6',
+                                                },
+                                                @if(!empty($chartData['who_standards']['median']))
+                                                {
+                                                    label: 'WHO Median',
+                                                    data: {!! json_encode(array_fill(0, count($chartData['measurements']), $chartData['who_standards']['median'])) !!},
+                                                    borderColor: '#22c55e',
+                                                    borderDash: [5,5],
+                                                    fill: false,
+                                                    tension: 0.4,
+                                                    pointRadius: 0,
+                                                },
+                                                @endif
+                                            ]
+                                        },
+                                        options: {
+                                            responsive: true,
+                                            plugins: {
+                                                legend: { position: 'top', labels: { boxWidth: 12, padding: 10 } },
+                                                tooltip: { callbacks: { label: function(context) { return context.dataset.label + ': ' + context.parsed.y; } } }
+                                            },
+                                            scales: {
+                                                y: { beginAtZero: false, title: { display: true, text: 'Weight (kg)' } },
+                                                x: { title: { display: true, text: 'Age (months)' } }
+                                            }
+                                        }
+                                    });
+                                });
+                            </script>
+                        </div>
+                    </div>
+                    @endif
 
                     <!-- Growth History -->
                     <div class="page-card rounded-3xl overflow-hidden">

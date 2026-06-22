@@ -17,7 +17,7 @@ Growth Chart - {{ $child->full_name }}
         </div>
     </div>
 
-    @if(!empty($chartData) && count($chartData['labels'] ?? []) > 0)
+    @if(!empty($chartData) && count($chartData['measurements'] ?? []) > 0)
         <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 mb-6">
             <form method="GET" class="flex flex-wrap gap-4 items-end">
                 <div class="w-48">
@@ -48,11 +48,11 @@ Growth Chart - {{ $child->full_name }}
                 new Chart(ctx, {
                     type: 'line',
                     data: {
-                        labels: {!! json_encode($chartData['labels'] ?? []) !!},
+                        labels: {!! json_encode(array_map(function($m) { return $m['age_months'] . 'm'; }, $chartData['measurements'] ?? [])) !!},
                         datasets: [
                             {
                                 label: '{{ ucfirst(str_replace('_', ' ', $parameter)) }}',
-                                data: {!! json_encode($chartData['values'] ?? []) !!},
+                                data: {!! json_encode(array_map(function($m) { return $m['value']; }, $chartData['measurements'] ?? [])) !!},
                                 borderColor: '#3b82f6',
                                 backgroundColor: 'rgba(59,130,246,0.1)',
                                 fill: true,
@@ -60,15 +60,17 @@ Growth Chart - {{ $child->full_name }}
                                 pointRadius: 5,
                                 pointBackgroundColor: '#3b82f6',
                             },
+                            @if(!empty($chartData['who_standards']['median']))
                             {
                                 label: 'WHO Median (Z-score 0)',
-                                data: {!! json_encode($chartData['who_median'] ?? []) !!},
+                                data: {!! json_encode(array_fill(0, count($chartData['measurements'] ?? []), $chartData['who_standards']['median'])) !!},
                                 borderColor: '#22c55e',
                                 borderDash: [5,5],
                                 fill: false,
                                 tension: 0.4,
                                 pointRadius: 0,
-                            }
+                            },
+                            @endif
                         ]
                     },
                     options: {
@@ -102,6 +104,8 @@ Growth Chart - {{ $child->full_name }}
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                     Record First Measurement
                 </a>
+            @else
+                <p class="mt-4 text-sm text-gray-400">Please contact your healthcare provider to schedule a growth measurement.</p>
             @endif
         </div>
     @endif

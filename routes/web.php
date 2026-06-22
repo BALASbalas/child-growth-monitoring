@@ -162,11 +162,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Immunizations (admin, nurse, doctor)
     // ============================================
     Route::middleware(['role:admin,nurse,doctor'])->group(function () {
-        Route::resource('immunizations', ImmunizationController::class);
-        Route::get('immunizations/schedule/generate/{child}', [ImmunizationController::class, 'generateSchedule'])->name('immunizations.generate-schedule');
-        Route::patch('immunizations/{immunization}/administer', [ImmunizationController::class, 'administer'])->name('immunizations.administer');
+        // Specific routes MUST come before resource routes to avoid
+        // "upcoming" and "overdue" being caught as {immunization} ID params
         Route::get('immunizations/upcoming', [ImmunizationController::class, 'upcoming'])->name('immunizations.upcoming');
         Route::get('immunizations/overdue', [ImmunizationController::class, 'overdue'])->name('immunizations.overdue');
+        Route::get('immunizations/schedule/generate/{child}', [ImmunizationController::class, 'generateSchedule'])->name('immunizations.generate-schedule');
+        Route::patch('immunizations/{immunization}/administer', [ImmunizationController::class, 'administer'])->name('immunizations.administer');
+        Route::resource('immunizations', ImmunizationController::class);
     });
 
     // ============================================

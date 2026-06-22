@@ -18,13 +18,16 @@ class ChildApiController extends Controller
         $user = Auth::user();
         $query = Child::with(['growthMeasurements', 'immunizations']);
 
-        if ($user->isParent() || $user->isGuardian()) {
-            $query->where('user_id', $user->id);
-        }
-
+        // Allow all users including parents to search across ALL children in the system
+        // Parents need to find any child by name to view their progress
         if ($request->filled('search')) {
             $search = $request->search;
             $query->search($search);
+        } else {
+            // Only restrict to own children if no search is performed
+            if ($user->isParent() || $user->isGuardian()) {
+                $query->where('user_id', $user->id);
+            }
         }
 
         if ($request->filled('sex')) {
@@ -46,7 +49,7 @@ class ChildApiController extends Controller
             $query->whereDate('created_at', '<=', $request->date_to);
         }
 
-        $children = $query->latest()->paginate(15);
+        $children = $query->latest()->paginate(50);
 
         // Add computed fields
         $children->getCollection()->transform(function($child) {
@@ -60,15 +63,42 @@ class ChildApiController extends Controller
 
             $nutritionLabel = 'No Data';
             $nutritionColor = 'bg-gray-100 text-gray-600';
+            $nutritionStatus = 'no_data';
+            $growthProgress = 0;
+            $wazStatus = 'normal';
+            $hazStatus = 'normal';
+
             if ($latestMeasurement) {
                 switch($latestMeasurement->nutritional_status) {
-                    case 'severe_underweight': $nutritionLabel = 'Severe Underweight'; $nutritionColor = 'bg-red-100 text-red-800'; break;
-                    case 'moderate_underweight': $nutritionLabel = 'Moderate Underweight'; $nutritionColor = 'bg-yellow-100 text-yellow-800'; break;
-                    case 'normal': $nutritionLabel = 'Normal'; $nutritionColor = 'bg-green-100 text-green-800'; break;
-                    case 'overweight': $nutritionLabel = 'Overweight'; $nutritionColor = 'bg-orange-100 text-orange-800'; break;
-                    case 'obese': $nutritionLabel = 'Obese'; $nutritionColor = 'bg-red-200 text-red-900'; break;
+                    case 'severe_underweight': $nutritionLabel = 'Severe Underweight'; $nutritionColor = 'bg-red-100 text-red-800'; $nutritionStatus = 'severe'; break;
+                    case 'moderate_underweight': $nutritionLabel = 'Moderate Underweight'; $nutritionColor = 'bg-yellow-100 text-yellow-800'; $nutritionStatus = 'moderate'; break;
+                    case 'normal': $nutritionLabel = 'Normal'; $nutritionColor = 'bg-green-100 text-green-800'; $nutritionStatus = 'normal'; break;
+                    case 'overweight': $nutritionLabel = 'Overweight'; $nutritionColor = 'bg-orange-100 text-orange-800'; $nutritionStatus = 'overweight'; break;
+                    case 'obese': $nutritionLabel = 'Obese'; $nutritionColor = 'bg-red-200 text-red-900'; $nutritionStatus = 'obese'; break;
+                }
+
+                // Growth progress percentage based on weight-for-age z-score
+                if ($latestMeasurement->weight_for_age_zscore !== null) {
+                    $waz = $latestMeasurement->weight_for_age_zscore;
+                    if ($waz < -3) { $wazStatus = 'critical'; $growthProgress = 15; }
+                    elseif ($waz < -2) { $wazStatus = 'warning'; $growthProgress = 35; }
+                    elseif ($waz < -1) { $wazStatus = 'below_normal'; $growthProgress = 55; }
+                    elseif ($waz < 1) { $wazStatus = 'normal'; $growthProgress = 80; }
+                    elseif ($waz < 2) { $wazStatus = 'above_normal'; $growthProgress = 90; }
+                    else { $wazStatus = 'elevated'; $growthProgress = 95; }
+                }
+
+                if ($latestMeasurement->height_for_age_zscore !== null) {
+                    $haz = $latestMeasurement->height_for_age_zscore;
+                    if ($haz < -3) $hazStatus = 'critical';
+                    elseif ($haz < -2) $hazStatus = 'warning';
+                    elseif ($haz < 1) $hazStatus = 'normal';
+                    else $hazStatus = 'above_normal';
                 }
             }
+
+            // Measurement count for tracking consistency
+            $measurementCount = $child->growthMeasurements->count();
 
             return [
                 'id' => $child->id,
@@ -92,9 +122,22 @@ class ChildApiController extends Controller
                 'created_at' => $child->created_at ? $child->created_at->format('Y-m-d H:i:s') : null,
                 'nutrition_label' => $nutritionLabel,
                 'nutrition_color' => $nutritionColor,
+                'nutrition_status' => $nutritionStatus,
                 'latest_weight' => $latestMeasurement ? number_format($latestMeasurement->weight, 2) . ' kg' : '-',
+                'latest_weight_raw' => $latestMeasurement ? (float)$latestMeasurement->weight : null,
                 'latest_height' => $latestMeasurement ? number_format($latestMeasurement->height, 1) . ' cm' : '-',
+                'latest_height_raw' => $latestMeasurement ? (float)$latestMeasurement->height : null,
                 'vaccine_progress' => "{$givenVaccines}/{$totalVaccines}",
+                'vaccine_done' => $givenVaccines,
+                'vaccine_total' => $totalVaccines,
+                'measurement_count' => $measurementCount,
+                'growth_progress' => $growthProgress,
+                'waz_status' => $wazStatus,
+                'haz_status' => $hazStatus,
+                'latest_waz' => $latestMeasurement ? $latestMeasurement->weight_for_age_zscore : null,
+                'latest_haz' => $latestMeasurement ? $latestMeasurement->height_for_age_zscore : null,
+                'latest_bmi' => $latestMeasurement ? $latestMeasurement->bmi : null,
+                'registration_date' => $child->created_at ? $child->created_at->format('d/m/Y') : null,
             ];
         });
 

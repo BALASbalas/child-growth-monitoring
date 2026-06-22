@@ -17,6 +17,17 @@ class GrowthMeasurementController extends Controller
         $this->whoGrowthService = $whoGrowthService;
     }
 
+    private function hasAnyMeasurementValue(array $validated): bool
+    {
+        foreach (['weight', 'height', 'head_circumference', 'mid_upper_arm_circumference', 'temperature'] as $field) {
+            if (array_key_exists($field, $validated) && $validated[$field] !== null && $validated[$field] !== '') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /**
      * Check if the current user can access a child's data (cross-role visibility).
      */
@@ -119,7 +130,7 @@ class GrowthMeasurementController extends Controller
             'height' => 'nullable|numeric|min:30|max:200',
             'head_circumference' => 'nullable|numeric|min:20|max:70',
             'mid_upper_arm_circumference' => 'nullable|numeric|min:5|max:40',
-            'temperature' => 'nullable|numeric|min:35|max:42',
+            'temperature' => 'nullable|numeric|max:42',
             'clinical_notes' => 'nullable|string',
             'is_from_device' => 'boolean',
             'device_id' => 'nullable|string|max:255',
@@ -132,6 +143,12 @@ class GrowthMeasurementController extends Controller
         }
         $child = $childQuery->firstOrFail();
 
+        if (!$this->hasAnyMeasurementValue($validated)) {
+            return back()->withErrors([
+                'measurement' => 'Please provide at least one measurement value (weight, height, head circumference, MUAC, or temperature).'
+            ])->withInput();
+        }
+
         $validated['user_id'] = $user->id;
         $validated['age_in_months'] = $this->whoGrowthService->calculateAgeInMonths($child->date_of_birth);
 
@@ -141,10 +158,16 @@ class GrowthMeasurementController extends Controller
         $zScoreResult = $this->whoGrowthService->calculateZScores($measurement, $child);
         
         if ($zScoreResult['success']) {
-            $measurement->save();
-            
-            return redirect()->route('children.show', $child)
-                ->with('success', 'Growth measurement recorded successfully.');
+            try {
+                $measurement->save();
+                
+                return redirect()->route('children.show', $child)
+                    ->with('success', 'Growth measurement recorded successfully.');
+            } catch (\Exception $e) {
+                return back()->withErrors([
+                    'error' => 'Failed to save measurement: ' . $e->getMessage()
+                ])->withInput();
+            }
         }
 
         return back()->withErrors(['error' => $zScoreResult['message']])
@@ -167,11 +190,23 @@ class GrowthMeasurementController extends Controller
             'height' => 'nullable|numeric|min:30|max:200',
             'head_circumference' => 'nullable|numeric|min:20|max:70',
             'mid_upper_arm_circumference' => 'nullable|numeric|min:5|max:40',
-            'temperature' => 'nullable|numeric|min:35|max:42',
+            'temperature' => 'nullable|numeric|max:42',
             'clinical_notes' => 'nullable|string',
             'is_from_device' => 'boolean',
             'device_id' => 'nullable|string|max:255',
         ]);
+
+        if (!$this->hasAnyMeasurementValue($validated)) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Please provide at least one measurement value (weight, height, head circumference, MUAC, or temperature).'
+                ], 422);
+            }
+
+            return back()->withErrors([
+                'measurement' => 'Please provide at least one measurement value (weight, height, head circumference, MUAC, or temperature).'
+            ])->withInput();
+        }
 
         $validated['user_id'] = Auth::id();
         $validated['child_id'] = $child->id;
@@ -280,7 +315,7 @@ class GrowthMeasurementController extends Controller
             'height' => 'nullable|numeric|min:30|max:200',
             'head_circumference' => 'nullable|numeric|min:20|max:70',
             'mid_upper_arm_circumference' => 'nullable|numeric|min:5|max:40',
-            'temperature' => 'nullable|numeric|min:35|max:42',
+            'temperature' => 'nullable|numeric|max:42',
             'clinical_notes' => 'nullable|string',
         ]);
 
