@@ -131,13 +131,61 @@
         </a>
         @endif
 
-        <!-- Reports -->
-        <a href="{{ route('admin.system-report') }}" class="nav-item {{ $currentRoute === 'admin.system-report' || str_starts_with($currentRoute, 'reports') ? 'active' : '' }}">
-            <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/>
-            </svg>
-            <span class="nav-label ml-3">Reports</span>
-        </a>
+        <!-- Reports Accordion -->
+        <div x-data="{ open: {{ str_starts_with($currentRoute, 'reports') || $currentRoute === 'admin.system-report' ? 'true' : 'false' }} }">
+            <button @click="open = !open" class="nav-item w-full text-left" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;">
+                <div class="flex items-center gap-3">
+                    <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/>
+                    </svg>
+                    <span class="nav-label">Reports</span>
+                </div>
+                <svg class="w-3.5 h-3.5 text-gray-400 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </button>
+            <div x-show="open" x-collapse.duration.200ms>
+                <!-- Growth Report - all healthcare workers -->
+                @if($cu->isAdmin() || $cu->isHealthcareWorker() || $cu->isDoctor())
+                <a href="{{ route('reports.growth') }}" class="nav-item pl-8 {{ $currentRoute === 'reports.growth' ? 'active' : '' }}">
+                    <svg class="nav-icon" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"/>
+                    </svg>
+                    <span class="nav-label ml-3">Growth Report</span>
+                </a>
+                @endif
+
+                <!-- Immunization Report - all healthcare workers -->
+                @if($cu->isAdmin() || $cu->isHealthcareWorker() || $cu->isDoctor())
+                <a href="{{ route('reports.immunization') }}" class="nav-item pl-8 {{ $currentRoute === 'reports.immunization' ? 'active' : '' }}">
+                    <svg class="nav-icon" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                    </svg>
+                    <span class="nav-label ml-3">Immunization Report</span>
+                </a>
+                @endif
+
+                <!-- Statistics - all healthcare workers -->
+                @if($cu->isAdmin() || $cu->isHealthcareWorker() || $cu->isDoctor())
+                <a href="{{ route('reports.statistics') }}" class="nav-item pl-8 {{ $currentRoute === 'reports.statistics' ? 'active' : '' }}">
+                    <svg class="nav-icon" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                    <span class="nav-label ml-3">Statistics</span>
+                </a>
+                @endif
+
+                <!-- System Report - admin only -->
+                @if($cu->isAdmin())
+                <a href="{{ route('admin.system-report') }}" class="nav-item pl-8 {{ $currentRoute === 'admin.system-report' ? 'active' : '' }}">
+                    <svg class="nav-icon" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    <span class="nav-label ml-3">System Report</span>
+                </a>
+                @endif
+            </div>
+        </div>
 
         @if($cu->isAdmin())
         <!-- Backup & Restore -->
